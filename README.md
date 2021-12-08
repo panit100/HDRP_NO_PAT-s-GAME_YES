@@ -1,0 +1,2 @@
+# HDRP_NO_PAT-s-GAME_YES
+ 
