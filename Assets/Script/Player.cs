@@ -38,7 +38,27 @@ public class Player : MonoBehaviour, IDamageable
     public int score = 0;
     public GameObject UI;
     public Text scoreText;
+    
 
+    [Header("SwipeDetect")]
+    public bool isSpecialAttackOn = false;
+    public Vector2 startPosition;
+    public Vector2 endPosition;
+    public Vector2 direction2D;
+    float startTime;
+    float endTime;
+    public float dashSpeed = 0;
+    public float dashTime = 0;
+    public float startDashTime = 0;
+    public float specialDelay = 0f;
+    public float timeUntilSpecialReadied = 0f;
+    public float SpecialTime = 0;
+    public bool isDash = false;
+    InputManager inputManager;
+
+    private void Awake() {
+        inputManager = InputManager.Instance;
+    }
     // Start is called before the first frame update
     void Start()
     {
@@ -46,6 +66,7 @@ public class Player : MonoBehaviour, IDamageable
         joystick = FindObjectOfType<Joystick>().GetComponent<Joystick>();
 
         currentHP = maxHP;
+        dashTime = startDashTime;
     }
 
     private void Update() {
@@ -56,12 +77,19 @@ public class Player : MonoBehaviour, IDamageable
     // Update is called once per frame
     void FixedUpdate()
     {
-        Move();
-        Rotate();
-        HandleAttack();
+        if(!isSpecialAttackOn){
+            Move();
+            Rotate();
+            HandleAttack();
+
+        }else{
+            UpdateSpecial();
+        }
 
         // FaceToEnemy();
         timeUntilAttackReadied -= Time.deltaTime;
+        timeUntilSpecialReadied -= Time.deltaTime;
+
     }
 
     void Move(){
@@ -179,4 +207,83 @@ public class Player : MonoBehaviour, IDamageable
     void UpdateScore(){
         scoreText.text = "Score : " + score;
     }
+
+    //-------SpacialAttack--------
+    private void OnEnable() {
+        inputManager.OnStartTouch += SwipeStart;
+        inputManager.OnEndTouch += SwipeEnd;
+    }
+
+    private void OnDisable() {
+        inputManager.OnStartTouch -= SwipeStart;
+        inputManager.OnEndTouch -= SwipeEnd;
+    }
+
+    void SwipeStart(Vector2 position, float time){
+        startPosition = position;
+        startTime = time;
+    }
+
+    void SwipeEnd(Vector2 position, float time){
+        endPosition = position;
+        endTime = time;
+        DetectSwipe();
+    }
+
+    void DetectSwipe(){
+        float distance =  Vector3.Distance(startPosition,endPosition);
+        float totalTime = endTime - startTime;
+        if(isSpecialAttackOn){
+            Debug.DrawLine(startPosition,endPosition,Color.red,5f);
+            Vector3 direction3D = endPosition - startPosition;
+            Vector2 direction2D = new Vector2(direction3D.x,direction3D.y).normalized;
+            HandleSpecial(direction2D);
+        }
+    }
+
+
+    void HandleSpecial(Vector2 dir){
+        if(!isDash){
+            rigidbody.velocity = dir * dashSpeed;
+            isDash = true;
+        }
+    }
+
+    void UpdateSpecial(){
+
+        if(isDash){
+            if(dashTime <= 0){
+                isDash = false;
+                dashTime = startDashTime;
+                rigidbody.velocity = Vector2.zero;
+            }else{
+                dashTime -= Time.deltaTime;
+        }
+        }
+        
+    }
+
+    public void Special(){
+        if(timeUntilSpecialReadied <= 0){
+            TurnOnSpecial();
+        }
+    }
+
+    void TurnOnSpecial(){
+        isSpecialAttackOn = true;
+        Invoke("TurnOffSpecial",SpecialTime);
+    }
+    void TurnOffSpecial(){
+        isSpecialAttackOn = false;
+        timeUntilSpecialReadied = specialDelay;
+    }
+
+    private void OnCollisionEnter2D(Collision2D other) {
+        if(isSpecialAttackOn){
+            if(other.gameObject.CompareTag("Enemy")){
+                other.gameObject.GetComponent<Enemy>().Die();
+            }
+        }
+    }
+    //----------------------------
 }

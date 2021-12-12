@@ -59,7 +59,7 @@ public class Enemy : MonoBehaviour, IDamageable
         currentHP -= amount;
     }
 
-    void Die(){
+    public void Die(){
         player.score++;
         Destroy(this.gameObject);
     }
